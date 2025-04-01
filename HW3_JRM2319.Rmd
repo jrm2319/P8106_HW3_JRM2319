@@ -13,15 +13,83 @@ The response variable is “mpg cat”, which indicates whether the miles per ga
 - **weight**: Vehicle weight (lbs.)  
 - **acceleration**: Time to accelerate from 0 to 60 mph (sec.)  
 - **year**: Model year (modulo 100)  
-- **origin**: Origin of car (1. American, 2. European, 3. Japanese)    
+- **origin**: Origin of car (1. American, 2. European, 3. Japanese) 
+- **mpg_cat**: *response variable* indicates whether the miles per gallon of a car
+is 'high' or 'low' 
 
-Split the dataset into two parts: training data (70%) and test data (30%).  
+### Import Data 
+```{r}
+auto = read.csv("auto.csv")
+head(auto)
+```
 
-(a) Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation.  
+### Split the dataset into two parts: training data (70%) and test data (30%).
+```{r}
+library(caret)
+library(tidymodels)
 
-(b) Train a multivariate adaptive regression spline (MARS) model. Does the MARS
-model improve prediction performance compared to logistic regression?
+datSplit <- initial_split(data = auto, prop = 0.7)
+trainData <- training(datSplit)
+testData <- testing(datSplit)
+head(trainData)
+```
 
-(c) Perform linear discriminant analysis using the training data. Plot the linear discriminant(s)  
+#### (a) Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation. 
 
-(d) Which model will you choose to predict the response variable? Plot its ROC curve and report the AUC. Next, select a probability threshold to classify observations and compute the confusion matrix. Briefly interpret what the confusion matrix indicates about your model’s performance.  
+Yes, there are redundant predictors in the model. By using the Pr(>|z|) in the logistic regression model, the following variables are redundant: cylinders, displacement, horsepower, acceleration, and origin. The predictors stated above have p-values > 0.05 and therefore do not contribute to the model in a statistically significant way. 
+
+- Perform logistic regression analysis
+```{r}
+set.seed(2)
+glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21),
+.lambda = exp(seq(-8, -1, length = 50)))
+
+ctrl <- trainControl(method = "cv", number = 10,
+summaryFunction = twoClassSummary,
+classProbs = TRUE)
+
+model.glm <- train(x = trainData[1:7], 
+                   y = trainData$mpg_cat, 
+                   method = "glm",   
+                   family = "binomial",  
+                   metric = "ROC", 
+                   trControl = ctrl)
+
+summary(model.glm)  
+
+```
+
+#### (b) Train a multivariate adaptive regression spline (MARS) model. Does the MARS model improve prediction performance compared to logistic regression?
+```{r}
+mars_grid <- expand.grid(degree = 1:2,
+                         nprune = 2:4)
+
+ctrl1 <- trainControl(method = "cv", number = 10)
+
+trainData$mpg_cat <- as.factor(trainData$mpg_cat)
+
+set.seed(2)
+
+mars.fit <- train(x = trainData[, 1:7],  
+                 y = trainData$mpg_cat,   
+                 method = "earth",         
+                 tuneGrid = mars_grid,     
+                 trControl = ctrl1)        
+
+ggplot(mars.fit)
+
+```
+
+- Prediction performance of logistic regression analysis
+```{r}
+
+```
+
+- Prediction performance of MARS
+```{r}
+
+```
+
+#### (c) Perform linear discriminant analysis using the **training** data. Plot the linear discriminant(s)  
+
+#### (d) Which model will you choose to predict the response variable? Plot its ROC curve and report the AUC. Next, select a probability threshold to classify observations and compute the confusion matrix. Briefly interpret what the confusion matrix indicates about your model’s performance.  
