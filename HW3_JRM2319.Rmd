@@ -1,0 +1,6 @@
+---
+title: "Data Science II: Homework 3"
+output: github_document
+Name: Jasmin Martinez
+Date: 04/01/2025
+---
