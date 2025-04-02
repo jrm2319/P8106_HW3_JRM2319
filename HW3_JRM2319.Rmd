@@ -4,6 +4,10 @@ output: pdf_document
 Name: Jasmin Martinez
 Date: 04/01/2025
 ---
+
+Name: Jasmin Martinez (JRM2319)
+Date: 04/01/25
+
 In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the dataset “auto.csv”. The dataset contains 392 observations.
 
 The response variable is “mpg cat”, which indicates whether the miles per gallon of a car is high or low. The predictors include both continuous and categorical variables:  
