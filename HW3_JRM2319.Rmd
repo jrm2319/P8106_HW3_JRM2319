@@ -28,13 +28,13 @@ head(auto)
 library(caret)
 library(tidymodels)
 
-datSplit <- initial_split(data = auto, prop = 0.7)
-trainData <- training(datSplit)
-testData <- testing(datSplit)
+datSplit = initial_split(data = auto, prop = 0.7)
+trainData = training(datSplit)
+testData = testing(datSplit)
 head(trainData)
 
-trainData$mpg_cat <- as.factor(trainData$mpg_cat)
-testData$mpg_cat <- as.factor(testData$mpg_cat)
+trainData$mpg_cat = as.factor(trainData$mpg_cat)
+testData$mpg_cat = as.factor(testData$mpg_cat)
 ```
 
 #### (a) Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation. 
@@ -77,16 +77,16 @@ summary(glm.fit2)
 #### (b) Train a multivariate adaptive regression spline (MARS) model. Does the MARS model improve prediction performance compared to logistic regression?
 
 ```{r}
-mars_grid <- expand.grid(degree = 1:2,
+mars_grid = expand.grid(degree = 1:2,
                          nprune = 2:4)
 
-ctrl1 <- trainControl(method = "cv", number = 10)
+ctrl1 = trainControl(method = "cv", number = 10)
 
-trainData$mpg_cat <- as.factor(trainData$mpg_cat)
+trainData$mpg_cat = as.factor(trainData$mpg_cat)
 
 set.seed(2)
 
-mars.fit <- train(x = trainData[, c("cylinders", "displacement", "horsepower", 
+mars.fit = train(x = trainData[, c("cylinders", "displacement", "horsepower", 
                                     "weight", "acceleration", "year", "origin")],  
                   y = trainData$mpg_cat,   
                  method = "earth",         
@@ -105,18 +105,76 @@ head(glm.pred)
 
 ##### Prediction performance of MARS
 ```{r}
-mars.pred = predict(mars.fit, newdata = testData, type = "raw")
-head(mars.pred)
+mars.pred = predict(mars.fit, newdata = testData, type = "raw")  
 ```
 ##### Model Performance Comparison
 ```{r}
 confusionMatrix(glm.pred, testData$mpg_cat)
 confusionMatrix(mars.pred, testData$mpg_cat)
 ```
-The MARS model does not significantly improve prediction performance compared to logistic regression. Both models achieve high accuracy (92.37% for logistic regression vs. 91.53% for MARS). Logistic regression has a slightly higher overall accuracy and specificity, while MARS has a slightly better sensitivity, meaning it identifies high-mileage cars more effectively. 
+The MARS model does not significantly improve prediction performance compared to logistic regression. Both models achieve high accuracy. Logistic regression has a slightly higher overall accuracy and specificity, while MARS has a slightly better sensitivity, meaning it identifies high-mileage cars more effectively. 
 
 However, the differences are minimal, and both models perform well. Since there is no substantial improvement in predictive performance, logistic regression may be preferable due to its interpretability and simplicity.
 
-#### (c) Perform linear discriminant analysis using the **training** data. Plot the linear discriminant(s)  
+#### (c) Perform linear discriminant analysis using the training data. Plot the linear discriminant(s)
+```{r}
+library(MASS)       
+library(ggplot2)   
+library(caret) 
+
+ctrl3 = trainControl(method = "repeatedcv", repeats = 5,
+summaryFunction = twoClassSummary,
+classProbs = TRUE)
+
+set.seed(22)
+
+model.lda = train(x = trainData[, c("cylinders", "displacement", "horsepower", 
+                                    "weight", "acceleration", "year", "origin")],  
+                  y = trainData$mpg_cat,
+                  method = "lda",
+                  metric = "ROC",
+                  trControl = ctrl3)
+
+print(model.lda)
+
+lda.pred2 = predict(model.lda, newdata = testData)
+```
+The Linear Discriminant Analysis (LDA) model performed well in distinguishing between the two classes ('high' and 'low') of `mpg_cat'. The ROC (=0.95) suggests excellent overall model discrimination. The sensitivity of 96.35% shows that the model is very effective at identifying instances of the 'high' class, while the specificity of 82.82% indicates that it is reasonably good at classifying the 'low' class. 
+
+Overall, the model is performing well, with strong ability to correctly classify both classes.
 
 #### (d) Which model will you choose to predict the response variable? Plot its ROC curve and report the AUC. Next, select a probability threshold to classify observations and compute the confusion matrix. Briefly interpret what the confusion matrix indicates about your model’s performance.  
+
+The MARS model has the highest accuracy and sensitivity. Therefore, it is the most reliable at predicting both classes ('high' and 'low'). While the LDA model also had a good performance, in terms of ROC and sensitivity, it had a lower specificity. This suggests the LDA model did poorer in correctly classifying the 'low' class compared to the GLM and MARS models. 
+
+Therefore, the MARS model is the best to predict the response variable, mpg_cat. The ROC curve was plotted and the AUC is 0.981.
+
+The confusion matrix shows that the model performs well in predicting both "high" and "low" gas mileage cars, with an overall accuracy of 92.37%. The strong Kappa value (0.8455) indicates a high level of agreement between the predicted and actual outcomes. Overall, the model demonstrates strong performance, especially in identifying high-mileage cars.
+
+##### ROC Curve 
+```{r}
+library(pROC)
+
+mars.prob = predict(mars.fit, newdata = testData, type = "prob")[, 2]  
+
+roc.mars = roc(testData$mpg_cat, mars.prob)
+
+plot(roc.mars, legacy.axes = TRUE, print.auc = TRUE)
+```
+##### Confusion Matrix 
+```{r}
+test.pred.prob <- predict(mars.fit, newdata = testData, type = "prob")
+
+test.pred.prob_pos <- test.pred.prob[, "high"]  # Assuming "high" is the positive class
+
+test.pred <- ifelse(test.pred.prob_pos > 0.5, "high", "low")  # Binary classification: "high" or "low"
+
+test.pred <- factor(test.pred, levels = levels(testData$mpg_cat))
+
+confusionMatrix(data = as.factor(test.pred), 
+                reference = testData$mpg_cat, 
+                positive = "high")  # Change to "low" if "low" is the positive class
+
+```
+
+
