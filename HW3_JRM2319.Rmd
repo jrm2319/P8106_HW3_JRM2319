@@ -32,34 +32,50 @@ datSplit <- initial_split(data = auto, prop = 0.7)
 trainData <- training(datSplit)
 testData <- testing(datSplit)
 head(trainData)
+
+trainData$mpg_cat <- as.factor(trainData$mpg_cat)
+testData$mpg_cat <- as.factor(testData$mpg_cat)
 ```
 
 #### (a) Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation. 
 
 Yes, there are redundant predictors in the model. By using the Pr(>|z|) in the logistic regression model, the following variables are redundant: cylinders, displacement, horsepower, acceleration, and origin. The predictors stated above have p-values > 0.05 and therefore do not contribute to the model in a statistically significant way. 
 
-- Perform logistic regression analysis
+##### Perform logistic regression analysis
 ```{r}
 set.seed(2)
-glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21),
+glmnGrid = expand.grid(.alpha = seq(0, 1, length = 21),
 .lambda = exp(seq(-8, -1, length = 50)))
 
-ctrl <- trainControl(method = "cv", number = 10,
+ctrl = trainControl(method = "cv", number = 10,
 summaryFunction = twoClassSummary,
 classProbs = TRUE)
 
-model.glm <- train(x = trainData[1:7], 
-                   y = trainData$mpg_cat, 
+glm.fit = train(x = trainData[, c("cylinders", "displacement", "horsepower", 
+                                  "weight", "acceleration", "year", "origin")],  
+                y = trainData$mpg_cat, 
                    method = "glm",   
                    family = "binomial",  
                    metric = "ROC", 
                    trControl = ctrl)
 
-summary(model.glm)  
+summary(glm.fit)  
+```
+##### Adjusting logistic regression model to include only non-redundant predictors
+```{r}
+glm.fit2 = train(x = trainData[c("weight", "year")],  
+                 y = trainData$mpg_cat,  
+                 method = "glm",   
+                 family = "binomial",  
+                 metric = "ROC",  
+                 trControl = ctrl)  
+
+summary(glm.fit2)
 
 ```
 
 #### (b) Train a multivariate adaptive regression spline (MARS) model. Does the MARS model improve prediction performance compared to logistic regression?
+
 ```{r}
 mars_grid <- expand.grid(degree = 1:2,
                          nprune = 2:4)
@@ -70,8 +86,9 @@ trainData$mpg_cat <- as.factor(trainData$mpg_cat)
 
 set.seed(2)
 
-mars.fit <- train(x = trainData[, 1:7],  
-                 y = trainData$mpg_cat,   
+mars.fit <- train(x = trainData[, c("cylinders", "displacement", "horsepower", 
+                                    "weight", "acceleration", "year", "origin")],  
+                  y = trainData$mpg_cat,   
                  method = "earth",         
                  tuneGrid = mars_grid,     
                  trControl = ctrl1)        
@@ -80,15 +97,25 @@ ggplot(mars.fit)
 
 ```
 
-- Prediction performance of logistic regression analysis
+##### Prediction performance of Logistic Regression
 ```{r}
-
+glm.pred = predict(glm.fit2, newdata = testData, type = "raw")
+head(glm.pred)
 ```
 
-- Prediction performance of MARS
+##### Prediction performance of MARS
 ```{r}
-
+mars.pred = predict(mars.fit, newdata = testData, type = "raw")
+head(mars.pred)
 ```
+##### Model Performance Comparison
+```{r}
+confusionMatrix(glm.pred, testData$mpg_cat)
+confusionMatrix(mars.pred, testData$mpg_cat)
+```
+The MARS model does not significantly improve prediction performance compared to logistic regression. Both models achieve high accuracy (92.37% for logistic regression vs. 91.53% for MARS). Logistic regression has a slightly higher overall accuracy and specificity, while MARS has a slightly better sensitivity, meaning it identifies high-mileage cars more effectively. 
+
+However, the differences are minimal, and both models perform well. Since there is no substantial improvement in predictive performance, logistic regression may be preferable due to its interpretability and simplicity.
 
 #### (c) Perform linear discriminant analysis using the **training** data. Plot the linear discriminant(s)  
 
